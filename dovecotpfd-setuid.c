@@ -29,12 +29,13 @@ INSTRUCTIONS FOR COMPILATION:
 Place dovecotpfd-setuid.c in roundcubedir/plugins/password/drivers and issue the following commands:
 
 gcc -o dovecotpfd-setuid dovecotpfd-setuid.c
-chown root:www-data dovecotpfd-setuid
 strip dovecotpfd-setuid
+chown root:www-data dovecotpfd-setuid
 chmod 4750 dovecotpfd-setuid
 
 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
 
@@ -42,18 +43,43 @@ chmod 4750 dovecotpfd-setuid
 // For security reasons DO NOT set this to 0 (i.e. root). Instead, create a new user, specify the uid of this new user here
 // and then make this user the owner of the dovecot passwd/userdb file and the chgdovecotpw script. This user should be the
 // only one who can execute the chgdovecotpw script and write to the dovecot passwd/userdb file.
-#define UID 65534
+//#define UID 65534
+#define UID 5001
 
 // Set path to chgdovecotpw (which you would normally place in /usr/sbin)
 #define CMD "/usr/sbin/chgdovecotpw"
 
-main(int argc, char *argv[]) {
+#define LOGFILE "/tmp/suidlog.txt"
 
-        if (!((setuid(UID) == 0) && (execv(CMD, argv) == 0))) {
-                return 1;
+int main(int argc, char *argv[]) {
+    int i;
+    FILE *fd;
+
+    argv[0] = CMD;
+
+    fd = fopen(LOGFILE,"w");
+    if (!fd) {
+        fprintf(stderr, "Unable to create %s", LOGFILE);
+    }
+
+    for (i = 0; i < argc - 1; i++) {
+        fprintf(fd, "%d: %s\n", i, argv[i]);
+    }
+
+    if (setuid(UID) == 0) { 
+        if (execv(CMD, argv + 1) != 0) {
+            fprintf(fd, "Error executing %s\n", CMD);
+            return 1;
         }
+    } else {
+        fprintf(fd, "Error on setuid: %d\n", errno);
+        return 1;
+    }
 
-        return 0;
+    fprintf(fd, "Success!\n");
+
+    fclose(fd);
+
+    return 0;
 
 }
-

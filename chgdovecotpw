@@ -42,7 +42,7 @@ DEFINE SCRIPT CONSTANTS
 */
 
 // Path to dovecotpw
-define("DOVECOTPW", "/usr/sbin/dovecotpw");
+define("DOVECOTPW", "/usr/bin/doveadm");
 
 // Script messages
 define("MSG_CLI_ERROR", "This script must be run from the CLI. Exiting." . PHP_EOL);
@@ -56,7 +56,14 @@ define("MSG_DOVECOTPW_ERROR", "Error calling dovecotpw. Please check dovecotpw e
 define("MSG_DOVECOTPW_RESPONSE", "Dovecotpw returned the following error:" . PHP_EOL);
 define("MSG_SUCCESS", "Password file successfully updated." . PHP_EOL);
 
-
+$logfile = fopen("/tmp/log.txt", "w");
+if (!$logfile) {
+    fprintf(STDERR, "Couldn't create logfile");
+    exit(1);
+}
+else {
+    fprintf(STDERR, "Created logfile" . PHP_EOL);
+}
 
 /*
 -----------------------------------------------------------------
@@ -65,11 +72,12 @@ SCRIPT LOGIC BEGINS AFTER THIS COMMENT BLOCK
 */
 
 function check_compatability() {
+    global $logfile;
 
 	// Check we were called from the CLI
 	if (!(php_sapi_name() == "cli")) {
 
-		printf("%s", MSG_CLI_ERROR);
+		fprintf($logfile,"%s", MSG_CLI_ERROR);
 		exit(1);
 
 	}
@@ -77,7 +85,7 @@ function check_compatability() {
 	// Check getopt() is available
 	if (!(function_exists("getopt"))) {
 
-		printf("%s", MSG_GETOPT_ERROR);
+		fprintf($logfile,"%s", MSG_GETOPT_ERROR);
 		exit(1);
 
 	}
@@ -85,9 +93,10 @@ function check_compatability() {
 }
 
 function get_hash($dovecotpw, $user, $scheme="SSHA", $new_password) {
+<<<<<<< HEAD
 
 	// Build dovecotpw command
-	$exec_cmd = sprintf("%s -u %s -s %s -p \"%s\" 2>&1", escapeshellcmd($dovecotpw), escapeshellcmd($user), escapeshellcmd($scheme), escapeshellcmd($new_password));
+	$exec_cmd = sprintf("%s pw -u %s -s %s -p \"%s\" 2>&1", escapeshellcmd($dovecotpw), escapeshellcmd($user), escapeshellcmd($scheme), escapeshellcmd($new_password));
 		
 	// Try to call dovecotpw
 	if ($ph = @popen($exec_cmd, "r")) {
@@ -101,13 +110,13 @@ function get_hash($dovecotpw, $user, $scheme="SSHA", $new_password) {
 			return trim($response);
 		
 		// Failure - exit
-		printf("%s%s", MSG_DOVECOTPW_RESPONSE, $response);
+		fprintf($logfile,"%s%s", MSG_DOVECOTPW_RESPONSE, $response);
 		exit(1);
 		
 	// Problem calling dovecotpw
 	} else {
 		
-		printf("%s", MSG_DOVECOTPW_ERROR);
+		fprintf($logfile,"%s", MSG_DOVECOTPW_ERROR);
 		exit(1);
 
 	}
@@ -115,10 +124,11 @@ function get_hash($dovecotpw, $user, $scheme="SSHA", $new_password) {
 }
 
 function update_password_file($password_file, $user, $new_password_hash) {
+    global $logfile;
 	
 	if ((@is_readable($password_file)) && (@is_writeable($password_file)) && ($fh = @fopen($password_file, "r+b"))) {						
 		
-		// Try to get an exlclusive lock on the password file (if we can't get a lock, we exit rather than wait blocking)
+		// Try to get an exclusive lock on the password file (if we can't get a lock, we exit rather than wait blocking)
 		if (flock($fh, LOCK_EX|LOCK_NB)) {
 			
 			// Read the file in to memory line by line (updating the password hash of the first line we find that contains $user)
@@ -134,7 +144,7 @@ function update_password_file($password_file, $user, $new_password_hash) {
 					
 					if ($linedata[0] == $user) {
 						
-						$linedata[1] = $new_password_hash;
+						$linedata[1] = $new_password_hash . "\n";
 						$hash_updated = true;
 
 					}
@@ -153,7 +163,7 @@ function update_password_file($password_file, $user, $new_password_hash) {
 			// If no password hash was changed, issue warning and exit
 			if (!($hash_updated)) {
 
-				printf("%s", MSG_USER_NOT_FOUND);
+				fprintf($logfile,"%s", MSG_USER_NOT_FOUND);
 				exit(1);
 
 			}
@@ -170,7 +180,7 @@ function update_password_file($password_file, $user, $new_password_hash) {
 		// Locking failed
 		} else {
 		
-			printf("%s", MSG_LOCK_FAIL);
+			fprintf($logfile,"%s", MSG_LOCK_FAIL);
 			exit(1);
 			
 		}
@@ -178,7 +188,7 @@ function update_password_file($password_file, $user, $new_password_hash) {
 	// Insufficient permissions or other error encountered while trying to open password file
 	} else {
 
-		printf("%s", MSG_FILE_ERROR);
+		fprintf($logfile,"%s", MSG_FILE_ERROR);
 		exit(1);
 
 	}
@@ -217,31 +227,31 @@ if (($argc == 5)) {
 		// Update password file with new hash
 		if (update_password_file($password_file, $user, $new_password_hash)) {
 
-			printf("%s", MSG_SUCCESS);
+			fprintf($logfile,"%s", MSG_SUCCESS);
 			exit(0);
 
 		} else {
 
-			printf("%s", MSG_FILE_ERROR);
+			fprintf($logfile,"%s", MSG_FILE_ERROR);
 			exit(1);
 
 		}	
 
 	 } else {
 
-	 	printf("%s", MSG_MISSING_ARGS);
+	 	fprintf($logfile,"%s", MSG_MISSING_ARGS);
 	 	exit(1);
 
 	 }
 
 } elseif (($argc == 2) && (in_array($argv[1], array('--help', '-help', '-h', '-?')))) {
 
-	printf("%s", MSG_USAGE);
+	fprintf($logfile,"%s", MSG_USAGE);
 	exit(1);
 
 } else {
 
-	printf("%s", MSG_MISSING_ARGS);
+	fprintf($logfile,"%s", MSG_MISSING_ARGS);
 	exit(1);
 
 }

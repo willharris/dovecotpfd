@@ -44,54 +44,60 @@
 * @author Charlie Orford (charlie.orford@attackplan.net)
 **/
 
-function password_save($currpass, $newpass)
+class rcube_dovecotpfd_password
 {
 
-	$rcmail = rcmail::get_instance();
-	$currdir = realpath(dirname(__FILE__));
-	list($user, $domain) = explode("@", $_SESSION['username']);
-	$username = (rcmail::get_instance()->config->get('password_dovecotpfd_format') == "%n") ? $user : $_SESSION['username'];	
-	$scheme = rcmail::get_instance()->config->get('password_dovecotpfd_scheme');
-	
-	// Set path to dovecot passwd/userdb file
-	// (the example below shows how you can support multiple passwd files, one for each domain. If you just use one file, replace sprintf with a simple string of the path to the passwd file)
-	$passwdfile = sprintf("/home/mail/%s/passwd", $domain);
-	
-	// Build command to call dovecotpfd-setuid wrapper
-	$exec_cmd = sprintf("%s/dovecotpfd-setuid -f=%s -u=%s -s=%s -p=\"%s\" 2>&1", $currdir, escapeshellcmd(realpath($passwdfile)), escapeshellcmd($username), escapeshellcmd($scheme), escapeshellcmd($newpass));
-	
-	// Call wrapper to change password
-	if ($ph = @popen($exec_cmd, "r"))
+	function save($currpass, $newpass)
 	{
-		
-		$response = "";
-		while (!feof($ph))
-			$response .= fread($ph, 8192);
-		
-		if (pclose($ph) == 0)
-			return PASSWORD_SUCCESS;
 
-		raise_error(array(
-			'code' => 600,
-			'type' => 'php',
-			'file' => __FILE__, 'line' => __LINE__,
-			'message' => "Password plugin: $currdir/dovecotpfd-setuid returned an error"
-			), true, false);
-		
-		return PASSWORD_ERROR;
-		
-	} else {
-	
-		raise_error(array(
-			'code' => 600,
-			'type' => 'php',
-			'file' => __FILE__, 'line' => __LINE__,
-			'message' => "Password plugin: error calling $currdir/dovecotpfd-setuid"
-			), true, false);
+        $rcmail = rcmail::get_instance();
+        $currdir = realpath(dirname(__FILE__));
+        list($user, $domain) = explode("@", $_SESSION['username']);
+        $username = (rcmail::get_instance()->config->get('password_dovecotpfd_format') == "%n") ? $user : $_SESSION['username'];        
+        $scheme = rcmail::get_instance()->config->get('password_dovecotpfd_scheme');
+        
+        // Set path to dovecot passwd/userdb file
+        // (the example below shows how you can support multiple passwd files, one for each domain. If you just use one file, replace sprintf with a simple string of the path to the passwd file)
+        //$passwdfile = sprintf("/home/mail/%s/passwd", $domain);
+        $passwdfile = "/etc/dovecot/users";
+        
+        // Build command to call dovecotpfd-setuid wrapper
+        $exec_cmd = sprintf("%s/dovecotpfd-setuid -f=%s -u=%s -s=%s -p=\"%s\" 2>&1", $currdir, escapeshellcmd(realpath($passwdfile)), escapeshellcmd($username), escapeshellcmd($scheme), escapeshellcmd($newpass));
+        
+        // Call wrapper to change password
+        if ($ph = @popen($exec_cmd, "r"))
+        {
+                
+                $response = "";
+                while (!feof($ph))
+                        $response .= fread($ph, 8192);
+                
+                if (pclose($ph) == 0)
+                        return PASSWORD_SUCCESS;
 
-		return PASSWORD_ERROR;
-		
-	}
+                rcube::raise_error(array(
+                        'code' => 600,
+                        'type' => 'php',
+                        'file' => __FILE__, 'line' => __LINE__,
+                        'message' => "Password plugin: $currdir/dovecotpfd-setuid returned an error\n$exec_cmd"
+                        ), true, false);
+                
+                return PASSWORD_ERROR;
+                
+        } else {
+        
+                rcube::raise_error(array(
+                        'code' => 600,
+                        'type' => 'php',
+                        'file' => __FILE__, 'line' => __LINE__,
+                        'message' => "Password plugin: error calling $currdir/dovecotpfd-setuid"
+                        ), true, false);
+
+                return PASSWORD_ERROR;
+
+        }
+
+    }
 
 }
 
