@@ -18,7 +18,9 @@ Updated for running on Ubuntu 18.04 with Roundcube 1.4.13 and PHP 7.2.
 1. Edit `dovecotpfd-setuid.c` and set the UID "define" to the id of the user you created above.
 1. Compile `dovecotpfd-setuid.c` process according to instructions in that file.
 1. Copy the `dovecotpfd-setuid` binary and the `dovecotpfd.php` script to `<roundcube home>/plugins/password/drivers`.
-1. Edit the Roundcube password plugin `config.inc.php` file and set `$config['password_driver'] = 'dovecotpfd'` .
+1. Edit the Roundcube password plugin `config.inc.php` file: 
+  1. Set `$config['password_driver'] = 'dovecotpfd'` .
+  2. Set `$config['password_dovecotpfd_scheme'] = 'SHA512-CRYPT'`, or whatever scheme you use.
 
 ## Original description
 
